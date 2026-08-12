@@ -11,7 +11,9 @@
 
 ### scrape_url
 
-Args: `url*` , `format` (`markdown`\|`html`), `country`, `max_chars`, `credentials_json`, `credentials_path`
+Args: `url*` , `format` (`raw`\|`json`, default `raw`), `data_format` (`markdown`\|`screenshot`, only when `format=raw`), `country`, `max_chars`, credentials…
+
+Maps 1:1 to Bright Data `POST /request` body: `{ zone, url, format, data_format?, country? }`.
 
 ### search_serp
 

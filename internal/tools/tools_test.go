@@ -14,12 +14,16 @@ import (
 func TestRegisterToolNames(t *testing.T) {
 	descs, handlers := tools.Register()
 	want := map[string]bool{
-		"scrape_url":         false,
-		"search_serp":        false,
-		"bright_data_health": false,
+		"search_engine":       false,
+		"scrape_as_markdown":  false,
+		"discover":            false,
+		"session_stats":       false,
+		"scrape_url":          false,
+		"search_serp":         false,
+		"bright_data_health":  false,
 	}
-	if len(descs) != 3 {
-		t.Fatalf("expected 3 tools, got %d", len(descs))
+	if len(descs) != 7 {
+		t.Fatalf("expected 7 rapid-mode tools, got %d", len(descs))
 	}
 	for _, d := range descs {
 		if _, ok := want[d.Name]; !ok {
@@ -34,6 +38,14 @@ func TestRegisterToolNames(t *testing.T) {
 		if !seen {
 			t.Fatalf("missing tool %s", name)
 		}
+	}
+}
+
+func TestRegisterProModeIncludesWebData(t *testing.T) {
+	t.Setenv("BRIGHTDATA_PRO_MODE", "true")
+	descs, _ := tools.Register()
+	if len(descs) < 60 {
+		t.Fatalf("expected 60+ tools in pro mode, got %d", len(descs))
 	}
 }
 
@@ -64,7 +76,7 @@ func TestScrapeURLSuccess(t *testing.T) {
 	_, handlers := tools.Register()
 	res := handlers["scrape_url"](mustJSON(map[string]interface{}{
 		"url":    "https://example.com",
-		"format": "markdown",
+		"format": "raw",
 	}))
 	if res["isError"] != false {
 		t.Fatalf("expected success: %#v", res)
@@ -72,6 +84,62 @@ func TestScrapeURLSuccess(t *testing.T) {
 	text := contentText(res)
 	if !strings.Contains(text, "UNTRUSTED_WEB_CONTENT") || !strings.Contains(text, "# Page") {
 		t.Fatalf("unexpected text: %s", text)
+	}
+	if !strings.Contains(text, "--- content ---") {
+		t.Fatalf("expected content section: %s", text)
+	}
+}
+
+func TestScrapeURLDefaultFormatIsRaw(t *testing.T) {
+	var got map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("<html></html>"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	res := handlers["scrape_url"](mustJSON(map[string]interface{}{
+		"url": "https://example.com",
+	}))
+	if res["isError"] != false {
+		t.Fatalf("expected success: %#v", res)
+	}
+	if got["format"] != "raw" {
+		t.Fatalf("expected format=raw, got %#v", got)
+	}
+	if _, ok := got["data_format"]; ok {
+		t.Fatalf("expected no data_format by default, got %#v", got)
+	}
+}
+
+func TestScrapeURLMarkdownUsesDataFormat(t *testing.T) {
+	var got map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("# Page"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	res := handlers["scrape_url"](mustJSON(map[string]interface{}{
+		"url":         "https://example.com",
+		"format":      "raw",
+		"data_format": "markdown",
+	}))
+	if res["isError"] != false {
+		t.Fatalf("expected success: %#v", res)
+	}
+	if got["format"] != "raw" || got["data_format"] != "markdown" {
+		t.Fatalf("unexpected upstream payload: %#v", got)
 	}
 }
 

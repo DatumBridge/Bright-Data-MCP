@@ -21,7 +21,7 @@ type RequestOpts struct {
 	Zone       string
 	URL        string
 	Format     string // "raw" or "json"
-	DataFormat string // "markdown" optional
+	DataFormat string // "markdown" or "screenshot" when Format is "raw"
 	Country    string
 	Method     string
 }
@@ -39,6 +39,10 @@ func NewClient(creds *Credentials) *Client {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			timeoutSec = n
 		}
+	}
+	poll := pollingTimeoutSec()
+	if poll+15 > timeoutSec {
+		timeoutSec = poll + 15
 	}
 	apiURL := strings.TrimSpace(os.Getenv("BRIGHTDATA_API_URL"))
 	if apiURL == "" {
@@ -119,6 +123,14 @@ func (c *Client) UnlockerZone() string {
 		return ""
 	}
 	return c.creds.UnlockerZone
+}
+
+// BrowserZone returns configured Scraping Browser zone.
+func (c *Client) BrowserZone() string {
+	if c == nil || c.creds == nil {
+		return ""
+	}
+	return c.creds.BrowserZone
 }
 
 // SerpZone returns the configured SERP zone.

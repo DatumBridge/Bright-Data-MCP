@@ -64,8 +64,8 @@ func TestInitializeAndToolsList(t *testing.T) {
 		t.Fatalf("no result: %s", rr2.Body.String())
 	}
 	toolsList, ok := result["tools"].([]interface{})
-	if !ok || len(toolsList) != 3 {
-		t.Fatalf("expected 3 tools, got %v", result["tools"])
+	if !ok || len(toolsList) < 7 {
+		t.Fatalf("expected at least 7 rapid tools, got %v", result["tools"])
 	}
 }
 

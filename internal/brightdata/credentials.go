@@ -15,6 +15,7 @@ type Credentials struct {
 	APIKey       string `json:"api_key"`
 	UnlockerZone string `json:"unlocker_zone"`
 	SerpZone     string `json:"serp_zone"`
+	BrowserZone  string `json:"browser_zone"`
 	// Aliases
 	Token string `json:"token"`
 	Key   string `json:"key"`
@@ -79,6 +80,9 @@ func ParseCredentials(credentialsJSON, credentialsPath string) (*Credentials, er
 	}
 	if strings.TrimSpace(c.SerpZone) == "" {
 		c.SerpZone = os.Getenv("BRIGHTDATA_SERP_ZONE")
+	}
+	if strings.TrimSpace(c.BrowserZone) == "" {
+		c.BrowserZone = firstNonEmpty(os.Getenv("BRIGHTDATA_BROWSER_ZONE"), os.Getenv("BROWSER_ZONE"))
 	}
 
 	c.APIKey = strings.TrimSpace(c.APIKey)

@@ -9,9 +9,9 @@
 
 ## Scrape page
 
-1. Agent calls `scrape_url` with `url` (+ optional `format`, `country`, `max_chars`)
-2. Server uses Unlocker zone + Bearer key
-3. Returns truncated markdown/html with untrusted prefix
+1. Agent calls `scrape_url` with `url` (+ optional `format`, `data_format`, `country`, `max_chars`)
+2. Server uses Unlocker zone + Bearer key; posts Bright Data `format` (`raw`|`json`) and optional `data_format`
+3. Returns metadata + `--- content ---` body with untrusted prefix
 
 ## SERP search
 

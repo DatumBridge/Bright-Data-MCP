@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/datumbridge/bright-data-mcp/internal/brightdata"
@@ -18,12 +19,9 @@ func handleScrapeURL(raw json.RawMessage) map[string]interface{} {
 		return mcp.ToolResultError("unlocker_zone required (credentials_json.unlocker_zone or BRIGHTDATA_UNLOCKER_ZONE)")
 	}
 	target := strArg(m, "url")
-	format := strings.ToLower(strArg(m, "format"))
-	if format == "" {
-		format = "markdown"
-	}
-	if format != "markdown" && format != "html" {
-		return mcp.ToolResultError("format must be markdown or html")
+	format, dataFormat, err := parseUnlockerFormats(m)
+	if err != nil {
+		return mcp.ToolResultError(err.Error())
 	}
 	country := strArg(m, "country")
 	if country != "" && len(country) != 2 {
@@ -38,13 +36,11 @@ func handleScrapeURL(raw json.RawMessage) map[string]interface{} {
 	}
 
 	opts := brightdata.RequestOpts{
-		Zone:    zone,
-		URL:     target,
-		Format:  "raw",
-		Country: country,
-	}
-	if format == "markdown" {
-		opts.DataFormat = "markdown"
+		Zone:       zone,
+		URL:        target,
+		Format:     format,
+		DataFormat: dataFormat,
+		Country:    country,
 	}
 
 	cctx, cancel := ctx()
@@ -55,16 +51,53 @@ func handleScrapeURL(raw json.RawMessage) map[string]interface{} {
 	}
 	content := string(body)
 	content, truncated := brightdata.TruncateUTF8(content, maxChars)
-
-	return jsonResult(map[string]interface{}{
+	charCount := len([]rune(content))
+	meta := map[string]interface{}{
 		"success":    true,
 		"url":        target,
 		"format":     format,
 		"status":     status,
-		"content":    content,
 		"truncated":  truncated,
-		"char_count": len([]rune(content)),
-	})
+		"char_count": charCount,
+	}
+	if dataFormat != "" {
+		meta["data_format"] = dataFormat
+	}
+	if strings.TrimSpace(content) == "" {
+		meta["warning"] = "empty body from Bright Data; verify unlocker_zone/credentials or try data_format=markdown with format=raw"
+	}
+	return scrapeResult(meta, content)
+}
+
+// parseUnlockerFormats maps tool args to Bright Data Web Unlocker API fields.
+// API format is only "raw" or "json". Optional data_format (markdown|screenshot) applies when format=raw.
+func parseUnlockerFormats(m map[string]interface{}) (format, dataFormat string, err error) {
+	format = strings.ToLower(strArg(m, "format"))
+	dataFormat = strings.ToLower(strArg(m, "data_format"))
+
+	// Backward compatibility for pre-API-alignment tool args.
+	switch format {
+	case "", "html":
+		format = "raw"
+	case "markdown":
+		format = "raw"
+		if dataFormat == "" {
+			dataFormat = "markdown"
+		}
+	}
+
+	if format != "raw" && format != "json" {
+		return "", "", fmt.Errorf("format must be raw or json (Bright Data Web Unlocker API)")
+	}
+	if dataFormat != "" {
+		if format != "raw" {
+			return "", "", fmt.Errorf("data_format is only valid when format=raw")
+		}
+		if dataFormat != "markdown" && dataFormat != "screenshot" {
+			return "", "", fmt.Errorf("data_format must be markdown or screenshot")
+		}
+	}
+	return format, dataFormat, nil
 }
 
 func handleSearchSERP(raw json.RawMessage) map[string]interface{} {
