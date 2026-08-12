@@ -19,8 +19,7 @@
 
 ### Fixed
 
-- `scrape_url` appeared to return only `[UNTRUSTED_WEB_CONTENT]` when large HTML was JSON-escaped inside `content`
-- Removed non-API `html`/`markdown` values from `format` (legacy aliases `html`→`raw`, `markdown`→`raw`+`data_format=markdown` still accepted)
+- Docker/deploy build failed: `go:embed data/datasets.json` missing because `.gitignore` rule `data/` excluded `internal/brightdata/data/` from git clone
 
 ### Removed
 
