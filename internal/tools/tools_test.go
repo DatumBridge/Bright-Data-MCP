@@ -2,22 +2,36 @@ package tools_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/datumbridge/bright-data-mcp/internal/mcp"
 	"github.com/datumbridge/bright-data-mcp/internal/tools"
 )
 
+func clearToolFilterEnv(t *testing.T) {
+	t.Helper()
+	for _, k := range []string{
+		"BRIGHTDATA_PRO_MODE", "PRO_MODE",
+		"BRIGHTDATA_GROUPS", "GROUPS",
+		"BRIGHTDATA_TOOLS", "TOOLS",
+	} {
+		t.Setenv(k, "")
+	}
+}
+
 func TestRegisterToolNames(t *testing.T) {
+	clearToolFilterEnv(t)
 	descs, handlers := tools.Register()
 	want := map[string]bool{
 		"search_engine":       false,
 		"scrape_as_markdown":  false,
-		"discover":            false,
-		"session_stats":       false,
+		"search_engine_batch": false,
+		"scrape_batch":        false,
 		"scrape_url":          false,
 		"search_serp":         false,
 		"bright_data_health":  false,
@@ -26,6 +40,9 @@ func TestRegisterToolNames(t *testing.T) {
 		t.Fatalf("expected 7 rapid-mode tools, got %d", len(descs))
 	}
 	for _, d := range descs {
+		if d.Name == "discover" {
+			t.Fatalf("deprecated discover must not be registered")
+		}
 		if _, ok := want[d.Name]; !ok {
 			t.Fatalf("unexpected tool %s", d.Name)
 		}
@@ -42,10 +59,163 @@ func TestRegisterToolNames(t *testing.T) {
 }
 
 func TestRegisterProModeIncludesWebData(t *testing.T) {
+	clearToolFilterEnv(t)
 	t.Setenv("BRIGHTDATA_PRO_MODE", "true")
 	descs, _ := tools.Register()
 	if len(descs) < 60 {
 		t.Fatalf("expected 60+ tools in pro mode, got %d", len(descs))
+	}
+	for _, d := range descs {
+		if d.Name == "discover" {
+			t.Fatalf("deprecated discover must not be registered in pro mode")
+		}
+	}
+	required := []string{
+		"search_engine", "scrape_as_markdown", "search_engine_batch", "scrape_batch",
+		"scrape_as_html", "extract", "session_stats",
+		"list_dataset_fields", "search_dataset",
+		"web_data_amazon_product", "web_data_linkedin_person_profile",
+		"web_data_npm_package", "web_data_chatgpt_ai_insights",
+		"web_data_booking_hotel_listings", "web_data_reuter_news", "web_data_reddit_comments",
+		"scraping_browser_navigate", "scraping_browser_snapshot",
+	}
+	have := map[string]bool{}
+	for _, d := range descs {
+		have[d.Name] = true
+	}
+	for _, name := range required {
+		if !have[name] {
+			t.Fatalf("pro mode missing official tool %s", name)
+		}
+	}
+}
+
+func TestSessionStatsNotInRapid(t *testing.T) {
+	clearToolFilterEnv(t)
+	descs, _ := tools.Register()
+	for _, d := range descs {
+		if d.Name == "session_stats" {
+			t.Fatalf("session_stats must be Pro/advanced_scraping only, not Rapid")
+		}
+	}
+}
+
+func toolNames(descs []mcp.ToolDesc) map[string]bool {
+	have := map[string]bool{}
+	for _, d := range descs {
+		have[d.Name] = true
+	}
+	return have
+}
+
+func TestGroupsBusinessTravelResearchSocial(t *testing.T) {
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "business")
+	have := toolNames(mustDescs(t))
+	if have["discover"] {
+		t.Fatal("business group must not include discover")
+	}
+	for _, name := range []string{
+		"search_engine", "scrape_as_markdown",
+		"web_data_crunchbase_company", "web_data_zoominfo_company_profile",
+		"web_data_google_maps_reviews", "web_data_zillow_properties_listing",
+		"list_dataset_fields", "search_dataset",
+	} {
+		if !have[name] {
+			t.Fatalf("business missing %s", name)
+		}
+	}
+	if have["web_data_booking_hotel_listings"] {
+		t.Fatal("business must not include booking (travel only)")
+	}
+
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "travel")
+	have = toolNames(mustDescs(t))
+	if !have["web_data_booking_hotel_listings"] {
+		t.Fatal("travel must include booking")
+	}
+
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "research")
+	have = toolNames(mustDescs(t))
+	if !have["web_data_github_repository_file"] {
+		t.Fatal("research missing github file tool")
+	}
+	if have["web_data_reuter_news"] {
+		t.Fatal("research must not force reuter_news")
+	}
+
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "social")
+	have = toolNames(mustDescs(t))
+	if !have["web_data_reddit_posts"] {
+		t.Fatal("social missing reddit_posts")
+	}
+	if have["web_data_reddit_comments"] {
+		t.Fatal("social must not include reddit_comments (Pro extra only)")
+	}
+	if have["discover"] {
+		t.Fatal("social must not include discover")
+	}
+
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "advanced_scraping")
+	have = toolNames(mustDescs(t))
+	for _, name := range []string{
+		"search_engine_batch", "scrape_batch", "scrape_as_html", "extract", "session_stats",
+	} {
+		if !have[name] {
+			t.Fatalf("advanced_scraping missing %s", name)
+		}
+	}
+}
+
+func TestGroupsEcommerceExcludesDiscover(t *testing.T) {
+	clearToolFilterEnv(t)
+	t.Setenv("BRIGHTDATA_GROUPS", "ecommerce")
+	have := toolNames(mustDescs(t))
+	if have["discover"] {
+		t.Fatal("ecommerce must not register discover")
+	}
+	if !have["web_data_amazon_product"] || !have["search_engine"] {
+		t.Fatal("ecommerce missing expected tools")
+	}
+}
+
+func mustDescs(t *testing.T) []mcp.ToolDesc {
+	t.Helper()
+	descs, _ := tools.Register()
+	return descs
+}
+
+func TestScrapeBatchEmptyAndCap(t *testing.T) {
+	clearToolFilterEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	empty := handlers["scrape_batch"](mustJSON(map[string]interface{}{
+		"urls": []interface{}{},
+	}))
+	if empty["isError"] != true {
+		t.Fatalf("expected empty urls error: %#v", empty)
+	}
+
+	urls := make([]interface{}, 0, 12)
+	for i := 0; i < 12; i++ {
+		urls = append(urls, fmt.Sprintf("https://example.com/p%d", i))
+	}
+	res := handlers["scrape_batch"](mustJSON(map[string]interface{}{"urls": urls}))
+	if res["isError"] != false {
+		t.Fatalf("expected success with capped urls: %#v", res)
 	}
 }
 

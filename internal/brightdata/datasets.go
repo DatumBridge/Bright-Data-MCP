@@ -170,7 +170,7 @@ func (c *Client) pollDatasetSnapshot(ctx context.Context, snapshotID string) ([]
 	return nil, fmt.Errorf("timeout after %d seconds waiting for dataset snapshot", maxAttempts)
 }
 
-// PollingTimeoutSec returns max poll attempts (1 second each) for dataset/discover APIs.
+// PollingTimeoutSec returns max poll attempts (1 second each) for dataset APIs.
 func PollingTimeoutSec() int {
 	return pollingTimeoutSec()
 }

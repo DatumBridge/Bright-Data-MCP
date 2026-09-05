@@ -10,7 +10,10 @@ Go (platform exception vs default Python FastMCP), matching `shopify-mcp`.
 
 ## Upstream
 
-Only `POST https://api.brightdata.com/request` (Web Unlocker + SERP zones).
+- `POST https://api.brightdata.com/request` — Web Unlocker / SERP
+- Datasets trigger + snapshot poll — `web_data_*`
+- Scraping Browser CDP — `scraping_browser_*`
+- **Not used:** `/discover` (retired; HTTP 410)
 
 ## Auth
 
@@ -20,8 +23,8 @@ Only `POST https://api.brightdata.com/request` (Web Unlocker + SERP zones).
 
 ## Tools
 
-`scrape_url`, `search_serp`, `bright_data_health`
+Rapid/Pro/Groups catalog per [Bright Data MCP tools](https://docs.brightdata.com/products/mcp-server/tools). DatumBridge aliases: `scrape_url`, `search_serp`, `bright_data_health`.
 
 ## Non-goals
 
-Browser API, datasets, crawl orchestration, native superproxy, screenshots as first-class tools.
+Native superproxy, Dataset Marketplace browsing UI, Scraper Studio IDE, hosted `mcp.brightdata.com` as the Weaver integration path, re-implementing Discover.

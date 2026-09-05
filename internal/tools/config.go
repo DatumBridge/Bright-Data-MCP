@@ -43,12 +43,15 @@ func splitCSV(s string) []string {
 }
 
 // rapidTools are enabled by default (Rapid/Free mode).
+// Parity with official Bright Data MCP Rapid set (docs + @brightdata/mcp);
+// `discover` removed — Bright Data Discover API returns HTTP 410.
+// `session_stats` is Pro / advanced_scraping only.
 var rapidTools = map[string]bool{
 	"search_engine":       true,
 	"scrape_as_markdown":  true,
-	"discover":            true,
+	"search_engine_batch": true,
+	"scrape_batch":        true,
 	"bright_data_health":  true,
-	"session_stats":       true,
 	// Legacy DatumBridge aliases
 	"scrape_url":  true,
 	"search_serp": true,

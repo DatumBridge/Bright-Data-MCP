@@ -1,8 +1,9 @@
 package tools
 
-// toolsInGroup returns tool names for a Bright Data MCP group id (official tool_groups.js parity).
+// toolsInGroup returns tool names for a Bright Data MCP group id
+// (official tool_groups.js / docs.brightdata.com/products/mcp-server/tools parity).
 func toolsInGroup(groupID string) []string {
-	base := []string{"search_engine", "scrape_as_markdown", "discover"}
+	base := []string{"search_engine", "scrape_as_markdown"}
 	switch groupID {
 	case "ecommerce":
 		return append(base,
@@ -22,7 +23,7 @@ func toolsInGroup(groupID string) []string {
 			"web_data_tiktok_profiles", "web_data_tiktok_posts", "web_data_tiktok_shop", "web_data_tiktok_comments",
 			"web_data_x_posts", "web_data_x_profile_posts",
 			"web_data_youtube_profiles", "web_data_youtube_comments", "web_data_youtube_videos",
-			"web_data_reddit_posts", "web_data_reddit_comments",
+			"web_data_reddit_posts",
 		)
 	case "browser":
 		return append(base,
@@ -38,10 +39,10 @@ func toolsInGroup(groupID string) []string {
 		return append(base,
 			"web_data_crunchbase_company", "web_data_zoominfo_company_profile",
 			"web_data_google_maps_reviews", "web_data_zillow_properties_listing",
-			"web_data_booking_hotel_listings", "list_dataset_fields", "search_dataset",
+			"list_dataset_fields", "search_dataset",
 		)
 	case "research":
-		return append(base, "web_data_github_repository_file", "web_data_reuter_news")
+		return append(base, "web_data_github_repository_file")
 	case "app_stores":
 		return append(base, "web_data_google_play_store", "web_data_apple_app_store")
 	case "travel":
@@ -65,7 +66,7 @@ func toolsInGroup(groupID string) []string {
 
 func allToolNames() []string {
 	names := []string{
-		"search_engine", "scrape_as_markdown", "discover",
+		"search_engine", "scrape_as_markdown",
 		"search_engine_batch", "scrape_batch", "scrape_as_html", "extract", "session_stats",
 		"list_dataset_fields", "search_dataset", "bright_data_health",
 		"scraping_browser_navigate", "scraping_browser_go_back", "scraping_browser_go_forward",

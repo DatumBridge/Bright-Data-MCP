@@ -50,7 +50,7 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 		[]string{"url"}, handleScrapeAsHTML)
 
 	reg("search_engine_batch", true,
-		"Run up to 10 search queries in parallel (Google JSON, Bing/Yandex Markdown).",
+		"Run up to 10 search queries in one request (Google JSON, Bing/Yandex Markdown).",
 		baseProps(map[string]interface{}{
 			"queries": map[string]interface{}{
 				"type": "array",
@@ -85,22 +85,6 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 			"extraction_prompt": map[string]interface{}{"type": "string"},
 		}),
 		[]string{"url"}, handleExtract)
-
-	reg("discover", true,
-		"AI-ranked web search via Bright Data Discover API.",
-		baseProps(map[string]interface{}{
-			"query":              map[string]interface{}{"type": "string"},
-			"intent":             map[string]interface{}{"type": "string"},
-			"country":            map[string]interface{}{"type": "string"},
-			"city":               map[string]interface{}{"type": "string"},
-			"language":           map[string]interface{}{"type": "string"},
-			"num_results":        map[string]interface{}{"type": "integer"},
-			"filter_keywords":    map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-			"remove_duplicates":  map[string]interface{}{"type": "boolean"},
-			"start_date":         map[string]interface{}{"type": "string"},
-			"end_date":           map[string]interface{}{"type": "string"},
-		}),
-		[]string{"query"}, handleDiscover)
 
 	reg("session_stats", true,
 		"Report per-tool call counts for this MCP server process session.",
@@ -355,36 +339,6 @@ func handleExtract(raw json.RawMessage) map[string]interface{} {
 	}
 	content, _ := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
 	return scrapeResult(meta, content)
-}
-
-func handleDiscover(raw json.RawMessage) map[string]interface{} {
-	client, m, err := clientFrom(raw)
-	if err != nil {
-		return mcp.ToolResultError(err.Error())
-	}
-	req := brightdata.DiscoverRequest{Query: strArg(m, "query"), Intent: strArg(m, "intent"),
-		Country: strArg(m, "country"), City: strArg(m, "city"), Language: strArg(m, "language"),
-		StartDate: strArg(m, "start_date"), EndDate: strArg(m, "end_date")}
-	if n := intArg(m, "num_results", 0); n > 0 {
-		req.NumResults = n
-	}
-	if kw, ok := m["filter_keywords"].([]interface{}); ok {
-		for _, k := range kw {
-			if s, ok := k.(string); ok && s != "" {
-				req.FilterKeywords = append(req.FilterKeywords, s)
-			}
-		}
-	}
-	if v, ok := m["remove_duplicates"].(bool); ok {
-		req.RemoveDuplicates = &v
-	}
-	cctx, cancel := pollCtx()
-	defer cancel()
-	data, err := client.Discover(cctx, req)
-	if err != nil {
-		return mcp.ToolResultError(err.Error())
-	}
-	return untrustedTextResult(string(data))
 }
 
 func pollCtx() (context.Context, context.CancelFunc) {
