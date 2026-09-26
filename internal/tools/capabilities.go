@@ -6,7 +6,7 @@ import "strings"
 func capabilitiesForTool(name string) []string {
 	switch {
 	case strings.HasPrefix(name, "web_data_"):
-		caps := []string{"web_scraping", "data_fetching", "bright_data"}
+		caps := []string{name, "data_fetching"}
 		switch {
 		case strings.Contains(name, "linkedin"), strings.Contains(name, "instagram"),
 			strings.Contains(name, "facebook"), strings.Contains(name, "tiktok"),
@@ -20,25 +20,25 @@ func capabilitiesForTool(name string) []string {
 		}
 		return caps
 	case strings.HasPrefix(name, "scraping_browser_"):
-		return []string{"browser_automation", "web_scraping", "bright_data"}
+		return []string{name, "browser_automation"}
 	}
 
 	switch name {
 	case "search_engine", "search_serp", "search_engine_batch":
-		return []string{"search", "web_scraping", "bright_data"}
+		return []string{name, "search"}
 	case "scrape_as_markdown", "scrape_as_html", "scrape_batch", "scrape_url":
-		return []string{"web_scraping", "data_fetching", "bright_data"}
+		return []string{name, "web_scraping"}
 	case "extract":
-		return []string{"web_scraping", "data_processing", "bright_data"}
+		return []string{name, "data_processing"}
 	case "discover":
-		return []string{"search", "web_scraping", "discover", "bright_data"}
+		return []string{name, "search"}
 	case "session_stats", "bright_data_health":
-		return []string{"web_scraping", "observability", "bright_data"}
+		return []string{name, "observability"}
 	case "list_dataset_fields":
-		return []string{"web_scraping", "data_fetching", "bright_data"}
+		return []string{name, "data_fetching"}
 	case "search_dataset":
-		return []string{"web_scraping", "search", "bright_data"}
+		return []string{name, "search"}
 	default:
-		return []string{"web_scraping", "bright_data"}
+		return []string{name}
 	}
 }

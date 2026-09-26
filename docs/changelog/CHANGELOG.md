@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Each Bright Data MCP tool advertises its own `_meta.capabilities` on `tools/list`, so Tool Registry ingest can store per-tool capabilities without a manual admin pass.
+- Each Bright Data MCP tool advertises its own `_meta.capabilities` on `tools/list` (`<tool name>` plus a family such as `search` or `social_media`). A shared `bright_data` tag is not applied to every tool.
 
 ## 2026-09-05
 
