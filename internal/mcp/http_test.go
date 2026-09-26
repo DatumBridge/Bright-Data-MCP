@@ -67,6 +67,41 @@ func TestInitializeAndToolsList(t *testing.T) {
 	if !ok || len(toolsList) < 7 {
 		t.Fatalf("expected at least 7 rapid tools, got %v", result["tools"])
 	}
+	capsByName := map[string][]string{}
+	for _, raw := range toolsList {
+		tool, _ := raw.(map[string]interface{})
+		name, _ := tool["name"].(string)
+		meta, _ := tool["_meta"].(map[string]interface{})
+		if meta == nil {
+			t.Fatalf("tool %s missing _meta", name)
+		}
+		rawCaps, _ := meta["capabilities"].([]interface{})
+		if len(rawCaps) == 0 {
+			t.Fatalf("tool %s missing _meta.capabilities", name)
+		}
+		caps := make([]string, 0, len(rawCaps))
+		for _, c := range rawCaps {
+			s, _ := c.(string)
+			if s != "" {
+				caps = append(caps, s)
+			}
+		}
+		capsByName[name] = caps
+	}
+	if join(capsByName["search_engine"]) == join(capsByName["scrape_as_markdown"]) {
+		t.Fatalf("expected distinct capabilities, got %v", capsByName["search_engine"])
+	}
+}
+
+func join(in []string) string {
+	out := ""
+	for i, s := range in {
+		if i > 0 {
+			out += ","
+		}
+		out += s
+	}
+	return out
 }
 
 func TestToolsListRejectsMissingSession(t *testing.T) {

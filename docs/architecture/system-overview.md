@@ -24,7 +24,7 @@ Catalog parity target: [Bright Data MCP tools](https://docs.brightdata.com/produ
 ## Impacted components
 
 - MCP under `mcp/bright-data-mcp`
-- Tool Registry entry `mcpServer=bright-data` (republish after deploy so `tools/list` drops `discover`)
+- Tool Registry entry `mcpServer=bright-data` (republish after deploy so `tools/list` drops `discover` and picks up per-tool `_meta.capabilities`)
 
 ## Risks
 

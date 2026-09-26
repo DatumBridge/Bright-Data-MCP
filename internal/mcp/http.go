@@ -24,6 +24,21 @@ type ToolDesc struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]interface{} `json:"inputSchema"`
+	Meta        map[string]interface{} `json:"_meta,omitempty"`
+}
+
+// CapabilityMeta builds MCP `_meta` consumed by DatumBridge Tool Registry ingest.
+func CapabilityMeta(caps ...string) map[string]interface{} {
+	values := make([]string, 0, len(caps))
+	for _, c := range caps {
+		if c != "" {
+			values = append(values, c)
+		}
+	}
+	return map[string]interface{}{
+		"capabilities": values,
+		"datumbridge":  map[string]interface{}{"capabilities": values},
+	}
 }
 
 // Server is the Streamable HTTP MCP tool-server.

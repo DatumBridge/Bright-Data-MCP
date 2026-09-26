@@ -17,6 +17,7 @@ func Register() ([]mcp.ToolDesc, map[string]mcp.ToolHandler) {
 			Name:        name,
 			Description: desc,
 			InputSchema: schema(props, required),
+			Meta:        mcp.CapabilityMeta(capabilitiesForTool(name)...),
 		})
 		handlers[name] = h
 	}

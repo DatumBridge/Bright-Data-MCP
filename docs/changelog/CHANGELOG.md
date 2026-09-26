@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26
+
+### Changed
+
+- Each Bright Data MCP tool advertises its own `_meta.capabilities` on `tools/list`, so Tool Registry ingest can store per-tool capabilities without a manual admin pass.
+
 ## 2026-09-05
 
 ### Changed
