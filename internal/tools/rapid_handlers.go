@@ -50,19 +50,25 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 		[]string{"url"}, handleScrapeAsHTML)
 
 	reg("search_engine_batch", true,
-		"Run up to 10 search queries in one request (Google JSON, Bing/Yandex Markdown).",
+		"Run up to 10 search queries in one request (Google JSON, Bing/Yandex Markdown). queries is an array of strings, or objects with a query field.",
 		baseProps(map[string]interface{}{
 			"queries": map[string]interface{}{
-				"type": "array",
+				"type":        "array",
+				"description": "Search strings, or objects {query, engine, cursor, geo_location}.",
 				"items": map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"query":        map[string]interface{}{"type": "string"},
-						"engine":       map[string]interface{}{"type": "string"},
-						"cursor":       map[string]interface{}{"type": "string"},
-						"geo_location": map[string]interface{}{"type": "string"},
+					"oneOf": []interface{}{
+						map[string]interface{}{"type": "string"},
+						map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"query":        map[string]interface{}{"type": "string"},
+								"engine":       map[string]interface{}{"type": "string"},
+								"cursor":       map[string]interface{}{"type": "string"},
+								"geo_location": map[string]interface{}{"type": "string"},
+							},
+							"required": []string{"query"},
+						},
 					},
-					"required": []string{"query"},
 				},
 				"maxItems": 10,
 			},
@@ -219,12 +225,18 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	queries, ok := m["queries"].([]interface{})
-	if !ok || len(queries) == 0 {
-		return mcp.ToolResultError("queries array is required (max 10)")
-	}
-	if len(queries) > 10 {
-		queries = queries[:10]
+	queries, err := brightdata.NormalizeBatchQueries(m["queries"])
+	if err != nil {
+		if q := strArg(m, "query"); q != "" {
+			queries = []brightdata.SearchQuery{{
+				Query:  q,
+				Engine: strArg(m, "engine"),
+				Cursor: strArg(m, "cursor"),
+				Geo:    strArg(m, "geo_location"),
+			}}
+		} else {
+			return mcp.ToolResultError(err.Error())
+		}
 	}
 	type result struct {
 		Query  string      `json:"query"`
@@ -233,15 +245,16 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 		Error  string      `json:"error,omitempty"`
 	}
 	out := make([]result, 0, len(queries))
-	for _, q := range queries {
-		qm, _ := q.(map[string]interface{})
-		query := strArg(qm, "query")
-		engine := strArg(qm, "engine")
-		if engine == "" {
+	failures := 0
+	for _, item := range queries {
+		query := item.Query
+		engine := item.Engine
+		if engine == "" || engine == "<nil>" {
 			engine = "google"
 		}
-		searchURL, err := brightdata.BuildEngineSearchURL(engine, query, strArg(qm, "cursor"), strArg(qm, "geo_location"))
+		searchURL, err := brightdata.BuildEngineSearchURL(engine, query, item.Cursor, item.Geo)
 		if err != nil {
+			failures++
 			out = append(out, result{Query: query, Engine: engine, Error: err.Error()})
 			continue
 		}
@@ -256,12 +269,14 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 		body, _, reqErr := client.Request(cctx, opts)
 		cancel()
 		if reqErr != nil {
+			failures++
 			out = append(out, result{Query: query, Engine: engine, Error: reqErr.Error()})
 			continue
 		}
 		if engine == "google" {
 			parsed, perr := brightdata.ParseGoogleSearchResponse(body)
 			if perr != nil {
+				failures++
 				out = append(out, result{Query: query, Engine: engine, Error: perr.Error()})
 				continue
 			}
@@ -269,6 +284,10 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 		} else {
 			out = append(out, result{Query: query, Engine: engine, Result: string(body)})
 		}
+	}
+	if failures == len(out) {
+		payload, _ := json.Marshal(out)
+		return mcp.ToolResultError(string(payload))
 	}
 	return jsonResult(out)
 }
