@@ -26,7 +26,7 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 	}
 
 	reg("search_engine", true,
-		"Scrape search results from Google, Bing or Yandex. Google returns JSON organic results; Bing/Yandex return Markdown.",
+		"Scrape search results from Google, Bing, or Yandex as Markdown. JSON organic results are returned only when Bright Data already sent JSON.",
 		baseProps(map[string]interface{}{
 			"query":        map[string]interface{}{"type": "string"},
 			"engine":       map[string]interface{}{"type": "string", "enum": []string{"google", "bing", "yandex"}, "default": "google"},
@@ -50,7 +50,7 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 		[]string{"url"}, handleScrapeAsHTML)
 
 	reg("search_engine_batch", true,
-		"Run up to 10 search queries in one request (Google JSON, Bing/Yandex Markdown). queries is an array of strings, or objects with a query field.",
+		"Run up to 10 search queries in one request and return Markdown. queries is an array of strings, or objects with a query field. JSON organic hits are kept when Bright Data already sent JSON.",
 		baseProps(map[string]interface{}{
 			"queries": map[string]interface{}{
 				"type":        "array",
@@ -111,14 +111,14 @@ func registerRapidTools(cfg ServerConfig, add toolAdder) {
 		[]string{"url"}, handleScrapeURL)
 
 	reg("search_serp", true,
-		"[Legacy alias] Use search_engine. SERP via Web Unlocker.",
+		"[Legacy alias] Use search_engine. SERP via Web Unlocker. brd_json defaults to false so the page is returned without Bright Data JSON parsing. Set brd_json=true to request parsed JSON.",
 		baseProps(map[string]interface{}{
 			"query":       map[string]interface{}{"type": "string"},
 			"engine":      map[string]interface{}{"type": "string", "enum": []string{"google", "bing"}},
 			"country":     map[string]interface{}{"type": "string"},
 			"language":    map[string]interface{}{"type": "string"},
 			"start":       map[string]interface{}{"type": "integer"},
-			"brd_json":    map[string]interface{}{"type": "boolean"},
+			"brd_json":    map[string]interface{}{"type": "boolean", "default": false, "description": "Request Bright Data parsed JSON. Slower. Default false returns the page as text."},
 			"max_results": map[string]interface{}{"type": "integer"},
 		}),
 		[]string{"query"}, handleSearchSERP)
@@ -156,29 +156,26 @@ func handleSearchEngine(raw json.RawMessage) map[string]interface{} {
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	isGoogle := engine == "google"
-	opts := brightdata.RequestOpts{Zone: zone, URL: searchURL, Format: "raw"}
-	if isGoogle {
-		opts.URL = searchURL + "&brd_json=1"
-		opts.DataFormat = "parsed_light"
-	} else {
-		opts.DataFormat = "markdown"
-	}
+	opts := brightdata.RequestOpts{Zone: zone, URL: searchURL, Format: "raw", DataFormat: "markdown"}
 	cctx, cancel := pollCtx()
 	defer cancel()
 	resp, err := client.Request(cctx, opts)
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	body := resp.Body
-	if !isGoogle {
-		return untrustedTextResult(string(body))
+	return searchBodyResult(resp.Body)
+}
+
+// searchBodyResult keeps structured organic hits when Bright Data sent JSON.
+// Markdown or HTML is returned as text so a non-JSON page is still usable.
+func searchBodyResult(body []byte) map[string]interface{} {
+	if parsed, err := brightdata.ParseGoogleSearchResponse(body); err == nil {
+		if organic, ok := parsed["organic"].([]map[string]string); ok && len(organic) > 0 {
+			return jsonResult(parsed)
+		}
 	}
-	parsed, err := brightdata.ParseGoogleSearchResponse(body)
-	if err != nil {
-		return mcp.ToolResultError(err.Error())
-	}
-	return jsonResult(parsed)
+	text, _ := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
+	return untrustedTextResult(text)
 }
 
 func handleScrapeAsMarkdown(raw json.RawMessage) map[string]interface{} {
@@ -255,13 +252,7 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 			out = append(out, result{Query: query, Engine: engine, Error: err.Error()})
 			continue
 		}
-		opts := brightdata.RequestOpts{Zone: zone, URL: searchURL, Format: "raw"}
-		if engine == "google" {
-			opts.URL = searchURL + "&brd_json=1"
-			opts.DataFormat = "parsed_light"
-		} else {
-			opts.DataFormat = "markdown"
-		}
+		opts := brightdata.RequestOpts{Zone: zone, URL: searchURL, Format: "raw", DataFormat: "markdown"}
 		cctx, cancel := pollCtx()
 		resp, reqErr := client.Request(cctx, opts)
 		cancel()
@@ -271,17 +262,14 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 			out = append(out, result{Query: query, Engine: engine, Error: reqErr.Error()})
 			continue
 		}
-		if engine == "google" {
-			parsed, perr := brightdata.ParseGoogleSearchResponse(body)
-			if perr != nil {
-				failures++
-				out = append(out, result{Query: query, Engine: engine, Error: perr.Error()})
+		if parsed, perr := brightdata.ParseGoogleSearchResponse(body); perr == nil {
+			if organic, ok := parsed["organic"].([]map[string]string); ok && len(organic) > 0 {
+				out = append(out, result{Query: query, Engine: engine, Result: parsed})
 				continue
 			}
-			out = append(out, result{Query: query, Engine: engine, Result: parsed})
-		} else {
-			out = append(out, result{Query: query, Engine: engine, Result: string(body)})
 		}
+		text, _ := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
+		out = append(out, result{Query: query, Engine: engine, Result: text})
 	}
 	if failures == len(out) {
 		payload, _ := json.Marshal(out)

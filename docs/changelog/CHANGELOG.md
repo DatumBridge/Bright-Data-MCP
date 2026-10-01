@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-02
+
+### Changed
+
+- `search_engine` and `search_engine_batch` request Markdown (`data_format=markdown`) for every engine, including Google. They no longer add `brd_json=1` or `data_format=parsed_light`. A JSON body with organic hits is still returned as JSON. Markdown or HTML is returned as text, so a non-JSON page is a successful tool result.
+- `search_serp` defaults `brd_json` to false. Deep Agent calls that send only `query` take the fast page fetch. Set `brd_json=true` to request Bright Data's parsed JSON.
+
 ## 2026-10-01
 
 ### Changed

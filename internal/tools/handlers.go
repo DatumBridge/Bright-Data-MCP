@@ -102,7 +102,7 @@ func handleSearchSERP(raw json.RawMessage) map[string]interface{} {
 	country := strArg(m, "country")
 	language := strArg(m, "language")
 	start := intArg(m, "start", 0)
-	brdJSON := boolArg(m, "brd_json", true)
+	brdJSON := boolArg(m, "brd_json", false)
 	maxResults := intArg(m, "max_results", 10)
 	if maxResults < 1 {
 		maxResults = 10

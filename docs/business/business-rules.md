@@ -11,3 +11,4 @@
 9. Operators are responsible for ToS/legal compliance of scrape targets.
 10. Hosted Bright Data MCP (`mcp.brightdata.com`) is optional for external clients; Weaver Tool Registry uses this Go MCP (`mcpServer=bright-data`).
 11. Unlocker tool output must show the zone that was called and Bright Data diagnostic headers, and must place the decoded response body after `--- content ---` without rewriting it. An empty HTTP 200 stays visible (`empty_body: true`) so Lab and Production can be compared.
+12. Search tools return the fetched page as text by default. Parsed Google JSON (`brd_json` / `parsed_light`) is opt-in on `search_serp` because that parse holds the request until Bright Data finishes structuring the SERP.

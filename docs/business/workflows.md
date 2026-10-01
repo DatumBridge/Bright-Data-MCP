@@ -10,9 +10,9 @@
 ## Rapid web search
 
 1. Agent calls `search_engine` with `query` (optional `engine`, `cursor`, `geo_location`)
-2. Server builds Google/Bing/Yandex URL and calls Unlocker `/request`
-3. Google returns structured organic JSON; Bing/Yandex return Markdown
-4. For many queries, use `search_engine_batch` (up to 10)
+2. Server builds the Google/Bing/Yandex URL and calls Unlocker `/request` with `data_format=markdown`
+3. The page text is returned as soon as Bright Data fetches it. JSON organic hits are kept when the body is already JSON
+4. For many queries, use `search_engine_batch` (up to 10). `search_serp` uses the same fast fetch unless `brd_json=true`
 
 ## Scrape page (Markdown)
 

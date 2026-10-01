@@ -43,9 +43,9 @@ Compare `zone` and `brightdata_headers` when Lab and Production return different
 
 #### search_serp
 
-Args: `query*` , `engine` (`google`\|`bing`), `country`, `language`, `start`, `brd_json`, `max_results`, credentials…
+Args: `query*` , `engine` (`google`\|`bing`), `country`, `language`, `start`, `brd_json` (default `false`), `max_results`, credentials…
 
-Prefer `search_engine`.
+`brd_json=false` returns the fetched page. `brd_json=true` asks Bright Data to parse Google into JSON and is slower. Prefer `search_engine`, which always requests Markdown and returns that text when the body is not JSON.
 
 #### bright_data_health
 

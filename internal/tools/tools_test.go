@@ -313,6 +313,85 @@ func TestScrapeURLMarkdownUsesDataFormat(t *testing.T) {
 	}
 }
 
+func TestSearchEngineReturnsMarkdownWithoutParsedJSON(t *testing.T) {
+	var got map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("# LANDCO\n\n[Site](https://landco.example)"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	res := handlers["search_engine"](mustJSON(map[string]interface{}{
+		"query": "LANDCO",
+	}))
+	if res["isError"] != false {
+		t.Fatalf("markdown search must succeed: %#v", res)
+	}
+	if got["data_format"] != "markdown" {
+		t.Fatalf("expected markdown, got %#v", got)
+	}
+	if url, _ := got["url"].(string); strings.Contains(url, "brd_json=1") {
+		t.Fatalf("parsed JSON requested: %s", url)
+	}
+	text := contentText(res)
+	if !strings.Contains(text, "# LANDCO") || !strings.Contains(text, "https://landco.example") {
+		t.Fatalf("missing page text: %s", text)
+	}
+}
+
+func TestSearchEngineKeepsOrganicJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"organic":[{"title":"LANDCO","link":"https://landco.example","description":"co"}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	res := handlers["search_engine"](mustJSON(map[string]interface{}{"query": "LANDCO"}))
+	if res["isError"] != false {
+		t.Fatalf("%#v", res)
+	}
+	text := contentText(res)
+	if !strings.Contains(text, `"title": "LANDCO"`) {
+		t.Fatalf("expected organic JSON: %s", text)
+	}
+}
+
+func TestSearchSERPDefaultSkipsBrdJSON(t *testing.T) {
+	var got map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("<html>serp</html>"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_SERP_ZONE", "serp1")
+
+	_, handlers := tools.Register()
+	res := handlers["search_serp"](mustJSON(map[string]interface{}{"query": "LANDCO"}))
+	if res["isError"] != false {
+		t.Fatalf("%#v", res)
+	}
+	url, _ := got["url"].(string)
+	if strings.Contains(url, "brd_json=1") {
+		t.Fatalf("default request asked for parsed JSON: %s", url)
+	}
+	text := contentText(res)
+	if !strings.Contains(text, "raw_excerpt") || !strings.Contains(text, "serp") {
+		t.Fatalf("expected raw page in result: %s", text)
+	}
+}
+
 func TestSearchSERPParsesOrganic(t *testing.T) {
 	payload := `{"organic":[{"title":"A","link":"https://a.example","snippet":"sa"},{"title":"B","link":"https://b.example","snippet":"sb"}]}`
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -327,6 +406,7 @@ func TestSearchSERPParsesOrganic(t *testing.T) {
 	_, handlers := tools.Register()
 	res := handlers["search_serp"](mustJSON(map[string]interface{}{
 		"query":       "test",
+		"brd_json":    true,
 		"max_results": 1,
 	}))
 	if res["isError"] != false {
