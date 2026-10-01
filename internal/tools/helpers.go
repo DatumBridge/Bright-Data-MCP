@@ -124,3 +124,31 @@ func scrapeResult(meta map[string]interface{}, body string) map[string]interface
 	text := untrustedPrefix + string(metaJSON) + "\n\n--- content ---\n\n" + body
 	return mcp.ToolResultText(text)
 }
+
+// unlockerResultMeta records the Bright Data request and the decoded response.
+// The page body is returned separately and is not rewritten.
+func unlockerResultMeta(zone, target, format, dataFormat string, resp brightdata.DirectResponse, content string, truncated bool) map[string]interface{} {
+	headers := brightdata.DiagnosticHeaders(resp.Header)
+	meta := map[string]interface{}{
+		"success":            resp.Status >= 200 && resp.Status < 300,
+		"url":                target,
+		"status":             resp.Status,
+		"zone":               zone,
+		"format":             format,
+		"truncated":          truncated,
+		"char_count":         len([]rune(content)),
+		"empty_body":         strings.TrimSpace(content) == "",
+		"brightdata_headers": headers,
+	}
+	if dataFormat != "" {
+		meta["data_format"] = dataFormat
+	}
+	if msg := headers["x-brd-error"]; msg != "" {
+		meta["brightdata_error"] = msg
+		meta["success"] = false
+	} else if msg := headers["x-luminati-error"]; msg != "" {
+		meta["brightdata_error"] = msg
+		meta["success"] = false
+	}
+	return meta
+}

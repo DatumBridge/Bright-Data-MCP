@@ -5,6 +5,7 @@
 - Endpoint: `POST https://api.brightdata.com/request`
 - Auth: `Authorization: Bearer <api_key>`
 - Body: `{ zone, url, format, data_format?, country?, method? }`
+- Response: decoded body is returned as scrape content. Diagnostic headers (`x-brd-*`, `x-luminati-*`, content type and length) are copied into the tool metadata so an empty HTTP 200 can be compared across environments. The API key is not included.
 
 ## Bright Data Datasets API (`web_data_*`)
 

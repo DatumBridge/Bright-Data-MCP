@@ -29,6 +29,18 @@ Args: `url*` , `format` (`raw`\|`json`, default `raw`), `data_format` (`markdown
 
 Maps 1:1 to Bright Data `POST /request` body: `{ zone, url, format, data_format?, country? }`. Prefer `scrape_as_markdown` / `scrape_as_html`.
 
+### Unlocker response
+
+`scrape_as_markdown`, `scrape_as_html`, `scrape_url`, and `extract` return one text block:
+
+1. A JSON object with the request zone, format, HTTP status, `char_count`, `empty_body`, and `brightdata_headers`.
+2. A `--- content ---` separator.
+3. The decoded Bright Data body, unchanged apart from `BRIGHTDATA_MAX_CHARS` truncation (`truncated: true` when that applies).
+
+`brightdata_headers` includes `x-brd-*`, `x-luminati-*`, `content-type`, and `content-length`. Cookies and authorization headers are not copied. `success` is false when `x-brd-error` or `x-luminati-error` is present. `scrape_batch` items carry the same status, zone, headers, and exact `content`.
+
+Compare `zone` and `brightdata_headers` when Lab and Production return different bodies for the same URL. The zone comes from `credentials_json.unlocker_zone`, then `BRIGHTDATA_UNLOCKER_ZONE`.
+
 #### search_serp
 
 Args: `query*` , `engine` (`google`\|`bing`), `country`, `language`, `start`, `brd_json`, `max_results`, credentials…

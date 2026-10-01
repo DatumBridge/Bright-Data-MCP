@@ -166,10 +166,11 @@ func handleSearchEngine(raw json.RawMessage) map[string]interface{} {
 	}
 	cctx, cancel := pollCtx()
 	defer cancel()
-	body, _, err := client.Request(cctx, opts)
+	resp, err := client.Request(cctx, opts)
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
+	body := resp.Body
 	if !isGoogle {
 		return untrustedTextResult(string(body))
 	}
@@ -204,16 +205,12 @@ func scrapeUnlocker(raw json.RawMessage, dataFormat string) map[string]interface
 	opts := brightdata.RequestOpts{Zone: zone, URL: target, Format: "raw", DataFormat: dataFormat}
 	cctx, cancel := pollCtx()
 	defer cancel()
-	body, status, err := client.Request(cctx, opts)
+	resp, err := client.Request(cctx, opts)
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	content, truncated := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
-	meta := map[string]interface{}{
-		"success": true, "url": target, "status": status, "truncated": truncated,
-		"char_count": len([]rune(content)),
-	}
-	return scrapeResult(meta, content)
+	content, truncated := brightdata.TruncateUTF8(string(resp.Body), brightdata.DefaultMaxChars())
+	return scrapeResult(unlockerResultMeta(zone, target, "raw", dataFormat, resp, content, truncated), content)
 }
 
 func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
@@ -266,8 +263,9 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 			opts.DataFormat = "markdown"
 		}
 		cctx, cancel := pollCtx()
-		body, _, reqErr := client.Request(cctx, opts)
+		resp, reqErr := client.Request(cctx, opts)
 		cancel()
+		body := resp.Body
 		if reqErr != nil {
 			failures++
 			out = append(out, result{Query: query, Engine: engine, Error: reqErr.Error()})
@@ -309,9 +307,14 @@ func handleScrapeBatch(raw json.RawMessage) map[string]interface{} {
 		urlsRaw = urlsRaw[:10]
 	}
 	type pair struct {
-		URL     string `json:"url"`
-		Content string `json:"content,omitempty"`
-		Error   string `json:"error,omitempty"`
+		URL       string            `json:"url"`
+		Status    int               `json:"status,omitempty"`
+		Zone      string            `json:"zone,omitempty"`
+		Headers   map[string]string `json:"brightdata_headers,omitempty"`
+		CharCount int               `json:"char_count,omitempty"`
+		EmptyBody bool              `json:"empty_body,omitempty"`
+		Content   string            `json:"content,omitempty"`
+		Error     string            `json:"error,omitempty"`
 	}
 	out := make([]pair, 0, len(urlsRaw))
 	for _, u := range urlsRaw {
@@ -319,14 +322,24 @@ func handleScrapeBatch(raw json.RawMessage) map[string]interface{} {
 		target = strings.TrimSpace(target)
 		opts := brightdata.RequestOpts{Zone: zone, URL: target, Format: "raw", DataFormat: "markdown"}
 		cctx, cancel := pollCtx()
-		body, _, reqErr := client.Request(cctx, opts)
+		resp, reqErr := client.Request(cctx, opts)
 		cancel()
+		headers := brightdata.DiagnosticHeaders(resp.Header)
 		if reqErr != nil {
-			out = append(out, pair{URL: target, Error: reqErr.Error()})
+			item := pair{URL: target, Status: resp.Status, Zone: zone, Headers: headers, Error: reqErr.Error()}
+			out = append(out, item)
 			continue
 		}
-		content, _ := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
-		out = append(out, pair{URL: target, Content: content})
+		content, _ := brightdata.TruncateUTF8(string(resp.Body), brightdata.DefaultMaxChars())
+		out = append(out, pair{
+			URL:       target,
+			Status:    resp.Status,
+			Zone:      zone,
+			Headers:   headers,
+			CharCount: len([]rune(content)),
+			EmptyBody: strings.TrimSpace(content) == "",
+			Content:   content,
+		})
 	}
 	return jsonResult(out)
 }
@@ -344,19 +357,18 @@ func handleExtract(raw json.RawMessage) map[string]interface{} {
 	prompt := strArg(m, "extraction_prompt")
 	cctx, cancel := pollCtx()
 	defer cancel()
-	body, _, err := client.Request(cctx, brightdata.RequestOpts{
+	resp, err := client.Request(cctx, brightdata.RequestOpts{
 		Zone: zone, URL: target, Format: "raw", DataFormat: "markdown",
 	})
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	meta := map[string]interface{}{
-		"url": target, "note": "Structure the markdown below as JSON using your LLM per extraction_prompt",
-	}
+	content, truncated := brightdata.TruncateUTF8(string(resp.Body), brightdata.DefaultMaxChars())
+	meta := unlockerResultMeta(zone, target, "raw", "markdown", resp, content, truncated)
+	meta["note"] = "Structure the markdown below as JSON using your LLM per extraction_prompt"
 	if prompt != "" {
 		meta["extraction_prompt"] = prompt
 	}
-	content, _ := brightdata.TruncateUTF8(string(body), brightdata.DefaultMaxChars())
 	return scrapeResult(meta, content)
 }
 

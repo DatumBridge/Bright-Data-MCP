@@ -45,26 +45,14 @@ func handleScrapeURL(raw json.RawMessage) map[string]interface{} {
 
 	cctx, cancel := ctx()
 	defer cancel()
-	body, status, err := client.Request(cctx, opts)
+	resp, err := client.Request(cctx, opts)
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
-	content := string(body)
-	content, truncated := brightdata.TruncateUTF8(content, maxChars)
-	charCount := len([]rune(content))
-	meta := map[string]interface{}{
-		"success":    true,
-		"url":        target,
-		"format":     format,
-		"status":     status,
-		"truncated":  truncated,
-		"char_count": charCount,
-	}
-	if dataFormat != "" {
-		meta["data_format"] = dataFormat
-	}
-	if strings.TrimSpace(content) == "" {
-		meta["warning"] = "empty body from Bright Data; verify unlocker_zone/credentials or try data_format=markdown with format=raw"
+	content, truncated := brightdata.TruncateUTF8(string(resp.Body), maxChars)
+	meta := unlockerResultMeta(zone, target, format, dataFormat, resp, content, truncated)
+	if country != "" {
+		meta["country"] = strings.ToLower(country)
 	}
 	return scrapeResult(meta, content)
 }
@@ -133,7 +121,7 @@ func handleSearchSERP(raw json.RawMessage) map[string]interface{} {
 
 	cctx, cancel := ctx()
 	defer cancel()
-	body, status, err := client.Request(cctx, brightdata.RequestOpts{
+	resp, err := client.Request(cctx, brightdata.RequestOpts{
 		Zone:   zone,
 		URL:    serpURL,
 		Format: "raw",
@@ -141,6 +129,8 @@ func handleSearchSERP(raw json.RawMessage) map[string]interface{} {
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
+	body := resp.Body
+	status := resp.Status
 
 	results, parseNote := parseSERPResults(body, maxResults)
 	out := map[string]interface{}{
@@ -186,7 +176,7 @@ func handleHealth(raw json.RawMessage) map[string]interface{} {
 	}
 	cctx, cancel := ctx()
 	defer cancel()
-	_, status, err := client.Request(cctx, brightdata.RequestOpts{
+	resp, err := client.Request(cctx, brightdata.RequestOpts{
 		Zone:   client.UnlockerZone(),
 		URL:    "https://example.com",
 		Format: "raw",
@@ -194,10 +184,13 @@ func handleHealth(raw json.RawMessage) map[string]interface{} {
 	if err != nil {
 		out["success"] = false
 		out["probe_error"] = err.Error()
+		out["probe_status"] = resp.Status
+		out["brightdata_headers"] = brightdata.DiagnosticHeaders(resp.Header)
 		b, _ := json.MarshalIndent(out, "", "  ")
 		return mcp.ToolResultError(string(b))
 	}
-	out["probe_status"] = status
+	out["probe_status"] = resp.Status
+	out["brightdata_headers"] = brightdata.DiagnosticHeaders(resp.Header)
 	out["message"] = "Live Unlocker probe succeeded"
 	b, _ := json.MarshalIndent(out, "", "  ")
 	return mcp.ToolResultText(string(b))

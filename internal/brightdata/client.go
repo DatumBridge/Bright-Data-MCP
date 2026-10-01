@@ -57,16 +57,54 @@ func NewClient(creds *Credentials) *Client {
 	}
 }
 
-// Request posts to Bright Data /request and returns the response body bytes.
-func (c *Client) Request(ctx context.Context, opts RequestOpts) ([]byte, int, error) {
+// DirectResponse is the decoded Bright Data HTTP response.
+// Body is the entity after net/http's transparent content decoding.
+// Header is cloned from the upstream response so callers can show x-brd-* diagnostics.
+type DirectResponse struct {
+	Status int
+	Header http.Header
+	Body   []byte
+}
+
+// DiagnosticHeaders returns Bright Data and content headers that explain an empty or failed scrape.
+// Authorization, cookies, and other credential-bearing headers are omitted.
+func DiagnosticHeaders(h http.Header) map[string]string {
+	out := map[string]string{}
+	if h == nil {
+		return out
+	}
+	for key, vals := range h {
+		lk := strings.ToLower(key)
+		if !diagnosticHeader(lk) {
+			continue
+		}
+		out[lk] = strings.Join(vals, ", ")
+	}
+	return out
+}
+
+func diagnosticHeader(name string) bool {
+	switch {
+	case strings.HasPrefix(name, "x-brd-"), strings.HasPrefix(name, "x-luminati-"), strings.HasPrefix(name, "brd-"):
+		return true
+	case name == "content-type", name == "content-length":
+		return true
+	default:
+		return false
+	}
+}
+
+// Request posts to Bright Data /request and returns the decoded response.
+// Non-2xx responses return both the response and an error so callers can surface status and headers.
+func (c *Client) Request(ctx context.Context, opts RequestOpts) (DirectResponse, error) {
 	if c == nil || c.creds == nil {
-		return nil, 0, fmt.Errorf("brightdata client not configured")
+		return DirectResponse{}, fmt.Errorf("brightdata client not configured")
 	}
 	if strings.TrimSpace(opts.Zone) == "" {
-		return nil, 0, fmt.Errorf("zone is required")
+		return DirectResponse{}, fmt.Errorf("zone is required")
 	}
 	if err := ValidateHTTPURL(opts.URL); err != nil {
-		return nil, 0, err
+		return DirectResponse{}, err
 	}
 	format := opts.Format
 	if format == "" {
@@ -88,33 +126,38 @@ func (c *Client) Request(ctx context.Context, opts RequestOpts) ([]byte, int, er
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
-		return nil, 0, err
+		return DirectResponse{}, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL, bytes.NewReader(payload))
 	if err != nil {
-		return nil, 0, err
+		return DirectResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.creds.APIKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("brightdata request failed: %w", err)
+		return DirectResponse{}, fmt.Errorf("brightdata request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Cap read to 30 MiB to avoid memory blowups before tool truncation.
 	limited := io.LimitReader(resp.Body, 30<<20)
 	data, err := io.ReadAll(limited)
+	out := DirectResponse{
+		Status: resp.StatusCode,
+		Header: resp.Header.Clone(),
+		Body:   data,
+	}
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("read response: %w", err)
+		return out, fmt.Errorf("read response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		msg := sanitizeProviderError(string(data))
-		return data, resp.StatusCode, fmt.Errorf("brightdata HTTP %d: %s", resp.StatusCode, msg)
+		return out, fmt.Errorf("brightdata HTTP %d: %s", resp.StatusCode, msg)
 	}
-	return data, resp.StatusCode, nil
+	return out, nil
 }
 
 // UnlockerZone returns the configured Web Unlocker zone.

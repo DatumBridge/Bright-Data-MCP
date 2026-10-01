@@ -356,6 +356,45 @@ func TestHealthMasksKey(t *testing.T) {
 	}
 }
 
+func TestScrapeAsMarkdownSurfacesBrightDataResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Brd-Error", "no_peer")
+		w.Header().Set("X-Brd-Error-Code", "client_10100")
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu1")
+
+	_, handlers := tools.Register()
+	res := handlers["scrape_as_markdown"](mustJSON(map[string]interface{}{
+		"url": "https://example.com/about",
+	}))
+	if res["isError"] != false {
+		t.Fatalf("HTTP 200 must still return the response text: %#v", res)
+	}
+	text := contentText(res)
+	for _, want := range []string{
+		`"zone": "wu1"`,
+		`"data_format": "markdown"`,
+		`"empty_body": true`,
+		`"char_count": 0`,
+		`"success": false`,
+		`"x-brd-error": "no_peer"`,
+		`"x-brd-error-code": "client_10100"`,
+		"--- content ---",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in %s", want, text)
+		}
+	}
+	if !strings.HasSuffix(text, "--- content ---\n\n") {
+		t.Fatalf("body was rewritten: %q", text)
+	}
+}
+
 func mustJSON(v interface{}) json.RawMessage {
 	b, err := json.Marshal(v)
 	if err != nil {

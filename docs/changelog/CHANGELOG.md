@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-01
+
+### Changed
+
+- Unlocker scrapes (`scrape_as_markdown`, `scrape_as_html`, `scrape_url`, `scrape_batch`, `extract`) now echo the Bright Data zone and pass through diagnostic response headers (`x-brd-*`, `x-luminati-*`, `content-type`, `content-length`). The text after `--- content ---` is the decoded response body, unmodified except the existing character cap.
+- `success` is false when Bright Data sets `x-brd-error` or `x-luminati-error`, including HTTP 200 with an empty body. The body is still returned so Lab and Production can be compared.
+
 ## 2026-09-26
 
 ### Changed

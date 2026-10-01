@@ -15,6 +15,10 @@ Catalog parity target: [Bright Data MCP tools](https://docs.brightdata.com/produ
 | `internal/brightdata` | Credentials + Direct API / datasets / browser client |
 | `internal/tools` | Tool registry, Rapid/Pro/Groups filtering, handlers |
 
+## 2026-10-01 change
+
+- Unlocker scrape tools return the decoded Bright Data body unchanged (aside from the existing character cap) and attach the zone plus `x-brd-*` / `x-luminati-*` headers. This makes an empty Production body comparable with a Lab body for the same URL.
+
 ## 2026-09-05 change
 
 - Removed deprecated `discover` (upstream HTTP 410).
