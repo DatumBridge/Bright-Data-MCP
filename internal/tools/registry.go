@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/datumbridge/bright-data-mcp/internal/mcp"
+	"github.com/datumbridge/bright-data-mcp/registry_docs"
 )
 
 func withCapabilitiesLine(desc string, caps []string) string {
@@ -25,6 +26,9 @@ func Register() ([]mcp.ToolDesc, map[string]mcp.ToolHandler) {
 		caps := capabilitiesForTool(name)
 		input := schema(props, required)
 		input["x-datumbridge-capabilities"] = caps
+		if doc := registrydocs.Markdown(name); doc != "" {
+			input["x-datumbridge-docs"] = doc
+		}
 		descs = append(descs, mcp.ToolDesc{
 			Name:        name,
 			Description: withCapabilitiesLine(desc, caps),
