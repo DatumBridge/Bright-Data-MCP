@@ -30,7 +30,7 @@ Output:
   "content": [
     {
       "type": "text",
-      "text": "[UNTRUSTED_WEB_CONTENT] scraped or search text"
+      "text": "scraped or search text"
     }
   ],
   "isError": false

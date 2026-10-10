@@ -15,6 +15,10 @@ Catalog parity target: [Bright Data MCP tools](https://docs.brightdata.com/produ
 | `internal/brightdata` | Credentials + Direct API / datasets / browser client |
 | `internal/tools` | Tool registry, Rapid/Pro/Groups filtering, handlers |
 
+## 2026-10-10 change
+
+- Tool text no longer starts with the untrusted-content warning. `search_engine` treats an empty Unlocker body or `x-brd-error` as `isError` and includes the zone and diagnostic headers. Weaver shows that error collapsed. A page that contains results is still a successful text result.
+
 ## 2026-10-02 change
 
 - Search tools fetch Markdown or page text instead of waiting for Bright Data `parsed_light` / `brd_json`. Deep Agent can read that text. Structured organic JSON is returned only when the upstream body is already JSON, or when `search_serp` is called with `brd_json=true`.

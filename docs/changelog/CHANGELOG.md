@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-10
+
+### Changed
+
+- Bright Data tool text no longer starts with `[UNTRUSTED_WEB_CONTENT]`. `search_engine` and `search_engine_batch` return `isError` when the Unlocker body is empty or Bright Data sets `x-brd-error` / `x-luminati-error`. The error text includes the zone and diagnostic headers. Scrapes with `success: false` are `isError` as well. Redeploy `bright-data-mcp`.
+
 ## 2026-10-02
 
 ### Changed

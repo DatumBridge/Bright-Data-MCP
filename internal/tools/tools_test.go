@@ -252,7 +252,7 @@ func TestScrapeURLSuccess(t *testing.T) {
 		t.Fatalf("expected success: %#v", res)
 	}
 	text := contentText(res)
-	if !strings.Contains(text, "UNTRUSTED_WEB_CONTENT") || !strings.Contains(text, "# Page") {
+	if strings.Contains(text, "UNTRUSTED_WEB_CONTENT") || !strings.Contains(text, "# Page") {
 		t.Fatalf("unexpected text: %s", text)
 	}
 	if !strings.Contains(text, "--- content ---") {
@@ -341,6 +341,30 @@ func TestSearchEngineReturnsMarkdownWithoutParsedJSON(t *testing.T) {
 	text := contentText(res)
 	if !strings.Contains(text, "# LANDCO") || !strings.Contains(text, "https://landco.example") {
 		t.Fatalf("missing page text: %s", text)
+	}
+}
+
+func TestSearchEngineEmptyBodyIsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Brd-Error", "no_peer")
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
+	t.Setenv("BRIGHTDATA_API_KEY", "k")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "wu-lab")
+
+	_, handlers := tools.Register()
+	res := handlers["search_engine"](mustJSON(map[string]interface{}{"query": "LANDCO"}))
+	if res["isError"] != true {
+		t.Fatalf("empty Lab search must fail: %#v", res)
+	}
+	text := contentText(res)
+	if strings.Contains(text, "UNTRUSTED_WEB_CONTENT") {
+		t.Fatalf("warning banner must not be in the tool text: %s", text)
+	}
+	if !strings.Contains(text, "no_peer") || !strings.Contains(text, "wu-lab") {
+		t.Fatalf("expected the Bright Data reason and zone: %s", text)
 	}
 }
 
@@ -452,8 +476,8 @@ func TestScrapeAsMarkdownSurfacesBrightDataResponse(t *testing.T) {
 	res := handlers["scrape_as_markdown"](mustJSON(map[string]interface{}{
 		"url": "https://example.com/about",
 	}))
-	if res["isError"] != false {
-		t.Fatalf("HTTP 200 must still return the response text: %#v", res)
+	if res["isError"] != true {
+		t.Fatalf("empty or refused Unlocker response must be a tool error: %#v", res)
 	}
 	text := contentText(res)
 	for _, want := range []string{

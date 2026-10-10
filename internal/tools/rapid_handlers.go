@@ -163,6 +163,9 @@ func handleSearchEngine(raw json.RawMessage) map[string]interface{} {
 	if err != nil {
 		return mcp.ToolResultError(err.Error())
 	}
+	if msg := brightDataRefusal(zone, searchURL, "raw", "markdown", resp); msg != "" {
+		return mcp.ToolResultError(msg)
+	}
 	return searchBodyResult(resp.Body)
 }
 
@@ -260,6 +263,11 @@ func handleSearchEngineBatch(raw json.RawMessage) map[string]interface{} {
 		if reqErr != nil {
 			failures++
 			out = append(out, result{Query: query, Engine: engine, Error: reqErr.Error()})
+			continue
+		}
+		if msg := brightDataRefusal(zone, searchURL, "raw", "markdown", resp); msg != "" {
+			failures++
+			out = append(out, result{Query: query, Engine: engine, Error: msg})
 			continue
 		}
 		if parsed, perr := brightdata.ParseGoogleSearchResponse(body); perr == nil {

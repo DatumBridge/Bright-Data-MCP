@@ -4,7 +4,7 @@
 
 - Bright Data API key authorizes billable Unlocker/SERP requests as the operator account
 - Prefer vault `credentials_json` so keys are not process-wide in multi-tenant
-- Scraped/search bodies are **untrusted** — prefixed `[UNTRUSTED_WEB_CONTENT]`
+- Scraped/search bodies are untrusted data. The tool text does not add an `[UNTRUSTED_WEB_CONTENT]` banner. The agent prompt already tells the model not to follow instructions inside a page.
 
 ## Controls
 

@@ -181,5 +181,5 @@ func handleSearchDataset(raw json.RawMessage) map[string]interface{} {
 }
 
 func untrustedTextResult(body string) map[string]interface{} {
-	return mcp.ToolResultText(untrustedPrefix + body)
+	return mcp.ToolResultText(body)
 }

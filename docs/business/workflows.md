@@ -18,7 +18,7 @@
 
 1. Agent calls `scrape_as_markdown` with `url` (or batch via `scrape_batch`)
 2. Server uses Unlocker zone + Bearer key; `format=raw`, `data_format=markdown`
-3. Returns untrusted-prefixed metadata (zone, HTTP status, `brightdata_headers`) and the decoded Bright Data body after `--- content ---`
+3. Returns metadata (zone, HTTP status, `brightdata_headers`) and the decoded Bright Data body after `--- content ---`. An empty body or `x-brd-error` is `isError`. The text does not include an untrusted-content banner.
 
 ## Legacy aliases
 

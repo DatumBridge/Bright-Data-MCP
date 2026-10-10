@@ -37,7 +37,7 @@ Maps 1:1 to Bright Data `POST /request` body: `{ zone, url, format, data_format?
 2. A `--- content ---` separator.
 3. The decoded Bright Data body, unchanged apart from `BRIGHTDATA_MAX_CHARS` truncation (`truncated: true` when that applies).
 
-`brightdata_headers` includes `x-brd-*`, `x-luminati-*`, `content-type`, and `content-length`. Cookies and authorization headers are not copied. `success` is false when `x-brd-error` or `x-luminati-error` is present. `scrape_batch` items carry the same status, zone, headers, and exact `content`.
+`brightdata_headers` includes `x-brd-*`, `x-luminati-*`, `content-type`, and `content-length`. Cookies and authorization headers are not copied. `success` is false when `x-brd-error` or `x-luminati-error` is present, and that result is MCP `isError: true`. `search_engine` and `search_engine_batch` use the same rule for an empty body. Tool text does not start with an untrusted-content banner. `scrape_batch` items carry the same status, zone, headers, and exact `content`.
 
 Compare `zone` and `brightdata_headers` when Lab and Production return different bodies for the same URL. The zone comes from `credentials_json.unlocker_zone`, then `BRIGHTDATA_UNLOCKER_ZONE`.
 
