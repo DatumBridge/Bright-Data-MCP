@@ -19,6 +19,19 @@ func TestParseCredentialsFromJSON(t *testing.T) {
 	}
 }
 
+func TestParseCredentialsLabZoneDefaults(t *testing.T) {
+	t.Setenv("BRIGHTDATA_API_KEY", "envkey")
+	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "")
+	t.Setenv("BRIGHTDATA_SERP_ZONE", "")
+	c, err := brightdata.ParseCredentials("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.UnlockerZone != brightdata.DefaultUnlockerZone || c.SerpZone != brightdata.DefaultSerpZone {
+		t.Fatalf("lab defaults: %+v", c)
+	}
+}
+
 func TestParseCredentialsEnvFallback(t *testing.T) {
 	t.Setenv("BRIGHTDATA_API_KEY", "envkey")
 	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "env-wu")

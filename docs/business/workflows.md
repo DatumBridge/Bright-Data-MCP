@@ -2,10 +2,10 @@
 
 ## Local connect
 
-1. Create Unlocker (+ Browser for Pro) zones; copy API key
-2. Set `.env` from `.env.example` (`BRIGHTDATA_PRO_MODE=true` for full catalog)
-3. `go run ./cmd/api`
-4. `initialize` → `tools/list` → `tools/call`
+1. Copy a Bright Data API token. Lab uses Direct API zones `web_unlocker2` (Unlocker) and `serp_api2` (legacy SERP). They are the process defaults when env/vault omit the names.
+2. Set `BRIGHTDATA_API_KEY` in `.env` or Tool Registry secret vars. Zone public vars are optional on lab.
+3. `go run ./cmd/api` or Tool Registry Setup/Publish (port `8011`). Do not set `HTTP_PROXY` to Superproxy on the MCP pod.
+4. `initialize` → `tools/list` → `tools/call` / `bright_data_health`
 
 ## Rapid web search
 

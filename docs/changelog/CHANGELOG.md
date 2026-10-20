@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-19
+
+### Changed
+
+- Lab/local defaults: `BRIGHTDATA_UNLOCKER_ZONE=web_unlocker2`, `BRIGHTDATA_SERP_ZONE=serp_api2` when vault/env omit the names. Only `BRIGHTDATA_API_KEY` is required to start. Redeploy `bright-data-mcp`. Override the names for non-lab Bright Data accounts.
+
 ## 2026-10-10
 
 ### Changed

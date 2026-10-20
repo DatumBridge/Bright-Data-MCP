@@ -15,6 +15,12 @@ Catalog parity target: [Bright Data MCP tools](https://docs.brightdata.com/produ
 | `internal/brightdata` | Credentials + Direct API / datasets / browser client |
 | `internal/tools` | Tool registry, Rapid/Pro/Groups filtering, handlers |
 
+## 2026-10-19 — Lab zone defaults
+
+| Change | Why | Components | Risk |
+|--------|-----|------------|------|
+| Empty `unlocker_zone` / `serp_zone` resolve to `web_unlocker2` / `serp_api2` | Local Tool Registry Setup only needs `BRIGHTDATA_API_KEY` | `ParseCredentials` | Low — other Bright Data accounts must set zone env/vault |
+
 ## 2026-10-10 change
 
 - Tool text no longer starts with the untrusted-content warning. `search_engine` treats an empty Unlocker body or `x-brd-error` as `isError` and includes the zone and diagnostic headers. Weaver shows that error collapsed. A page that contains results is still a successful text result.

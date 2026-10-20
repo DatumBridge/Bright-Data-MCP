@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+// Lab Direct API zone names (Weaver local / k8s Tool Registry). Override via env or vault.
+const (
+	DefaultUnlockerZone = "web_unlocker2"
+	DefaultSerpZone     = "serp_api2"
+)
+
 // Credentials is the vault/injected credentials_json shape for Bright Data Direct API.
 // Zones are never accepted as free-form tool parameters — only from credentials/env.
 type Credentials struct {
@@ -90,6 +96,12 @@ func ParseCredentials(credentialsJSON, credentialsPath string) (*Credentials, er
 	c.SerpZone = strings.TrimSpace(c.SerpZone)
 	c.Token = ""
 	c.Key = ""
+	if c.UnlockerZone == "" {
+		c.UnlockerZone = DefaultUnlockerZone
+	}
+	if c.SerpZone == "" {
+		c.SerpZone = DefaultSerpZone
+	}
 
 	if c.APIKey == "" {
 		return nil, fmt.Errorf("api_key required (credentials_json.api_key or BRIGHTDATA_API_KEY)")

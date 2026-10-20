@@ -29,18 +29,23 @@ Go MCP **tool-server** aligned with [Bright Data MCP tools](https://docs.brightd
 ## Setup
 
 ```bash
-BRIGHTDATA_API_KEY=...
-BRIGHTDATA_UNLOCKER_ZONE=web_unlocker1   # Web Unlocker / SERP via /request
+BRIGHTDATA_API_KEY=...                   # required
+# Zones default to lab Direct API names when omitted:
+# BRIGHTDATA_UNLOCKER_ZONE=web_unlocker2
+# BRIGHTDATA_SERP_ZONE=serp_api2
 BRIGHTDATA_BROWSER_ZONE=mcp_browser      # Pro browser tools
 BRIGHTDATA_PRO_MODE=true                 # enable all tools
 ```
+
+Lab Tool Registry Setup: set secret `BRIGHTDATA_API_KEY` only. Public `BRIGHTDATA_UNLOCKER_ZONE=web_unlocker2` and `BRIGHTDATA_SERP_ZONE=serp_api2` are optional (those are the process defaults). Do not point this MCP at Bright Data Superproxy.
 
 Vault `credentials_json`:
 
 ```json
 {
   "api_key": "...",
-  "unlocker_zone": "web_unlocker1",
+  "unlocker_zone": "web_unlocker2",
+  "serp_zone": "serp_api2",
   "browser_zone": "mcp_browser"
 }
 ```

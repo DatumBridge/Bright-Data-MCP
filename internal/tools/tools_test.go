@@ -219,7 +219,20 @@ func TestScrapeBatchEmptyAndCap(t *testing.T) {
 	}
 }
 
-func TestScrapeURLMissingZone(t *testing.T) {
+func TestScrapeURLUsesLabDefaultUnlockerZone(t *testing.T) {
+	var gotZone string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		var body map[string]interface{}
+		_ = json.Unmarshal(b, &body)
+		if z, ok := body["zone"].(string); ok {
+			gotZone = z
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("# Page"))
+	}))
+	defer srv.Close()
+	t.Setenv("BRIGHTDATA_API_URL", srv.URL)
 	t.Setenv("BRIGHTDATA_API_KEY", "k")
 	t.Setenv("BRIGHTDATA_UNLOCKER_ZONE", "")
 	t.Setenv("BRIGHTDATA_SERP_ZONE", "")
@@ -227,8 +240,11 @@ func TestScrapeURLMissingZone(t *testing.T) {
 	res := handlers["scrape_url"](mustJSON(map[string]interface{}{
 		"url": "https://example.com",
 	}))
-	if res["isError"] != true {
-		t.Fatalf("expected error: %#v", res)
+	if res["isError"] != false {
+		t.Fatalf("expected success with lab zone default: %#v", res)
+	}
+	if gotZone != "web_unlocker2" {
+		t.Fatalf("zone %q", gotZone)
 	}
 }
 

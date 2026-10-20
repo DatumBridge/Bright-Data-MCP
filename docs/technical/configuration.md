@@ -5,8 +5,8 @@
 | `BRIGHTDATA_MCP_PORT` / `PORT` | `8011` | Listen port |
 | `LOG_LEVEL` | `INFO` | zerolog level |
 | `BRIGHTDATA_API_KEY` | — | Bearer token (env fallback) |
-| `BRIGHTDATA_UNLOCKER_ZONE` | — | Web Unlocker zone name |
-| `BRIGHTDATA_SERP_ZONE` | — | Optional SERP zone (legacy) |
+| `BRIGHTDATA_UNLOCKER_ZONE` | `web_unlocker2` | Web Unlocker zone (`search_engine`, scrape). Lab Direct API zone; override for other accounts. |
+| `BRIGHTDATA_SERP_ZONE` | `serp_api2` | SERP zone (legacy `search_serp`). Lab Direct API zone; override for other accounts. |
 | `BRIGHTDATA_BROWSER_ZONE` | — | Scraping Browser zone (Pro browser tools) |
 | `BRIGHTDATA_PRO_MODE` / `PRO_MODE` | `false` | When `true`, register full tool catalog |
 | `BRIGHTDATA_GROUPS` / `GROUPS` | — | CSV group ids (`ecommerce`, `social`, `browser`, …) |
